@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIとしりとり</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .game-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .game-status {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .next-char {
+            font-size: 1.5em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #wordInput {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.1em;
+            transition: border-color 0.3s;
+        }
+
+        #wordInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .new-game-btn {
+            background: #28a745;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .new-game-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .history {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .user-word {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+
+        .ai-word {
+            background: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+
+        .word {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .game-over {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+        }
+
+        .rules {
+            background: #e8f4f8;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .rules h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .rules ul {
+            list-style-position: inside;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 AIとしりとり</h1>
+        
+        <div class="rules">
+            <h3>📋 ルール</h3>
+            <ul>
+                <li>「ん」で終わる単語を言ったら負け</li>
+                <li>同じ単語は使えません</li>
+                <li>前の単語の最後の文字で始まる単語を言う</li>
+            </ul>
+        </div>
+
+        <div class="game-info">
+            <div class="game-status" id="gameStatus">ゲームを開始してください</div>
+            <div class="next-char" id="nextChar"></div>
+        </div>
+
+        <div class="input-section">
+            <input type="text" id="wordInput" placeholder="単語を入力してください" disabled>
+            <button class="submit-btn" id="submitBtn" onclick="submitWord()" disabled>送信</button>
+        </div>
+
+        <button class="new-game-btn" onclick="startNewGame()">新しいゲームを開始</button>
+
+        <div class="loading" id="loading">AIが考えています...</div>
+
+        <div id="message"></div>
+
+        <div class="history" id="history" style="display: none;">
+            <h3>📝 履歴</h3>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <script>
+        let gameActive = false;
+
+        // エンターキーでの送信
+        document.getElementById('wordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !document.getElementById('submitBtn').disabled) {
+                submitWord();
+            }
+        });
+
+        async function startNewGame() {
+            try {
+                const response = await fetch('/start_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    gameActive = true;
+                    document.getElementById('wordInput').disabled = false;
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('gameStatus').textContent = 'ゲーム開始！最初の単語を入力してください';
+                    document.getElementById('nextChar').textContent = '';
+                    document.getElementById('wordInput').focus();
+                    
+                    // 履歴をクリア
+                    document.getElementById('historyList').innerHTML = '';
+                    document.getElementById('history').style.display = 'none';
+                    
+                    showMessage(data.message, 'success');
+                }
+            } catch (error) {
+                showMessage('ゲーム開始でエラーが発生しました: ' + error.message, 'error');
+            }
+        }
+
+        async function submitWord() {
+            const wordInput = document.getElementById('wordInput');
+            const word = wordInput.value.trim();
+            
+            if (!word) {
+                showMessage('単語を入力してください', 'error');
+                return;
+            }
+
+            // UI無効化
+            document.getElementById('submitBtn').disabled = true;
+            wordInput.disabled = true;
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const response = await fetch('/play', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ word: word })
+                });
+
+                const data = await response.json();
+                
+                // 履歴を更新
+                updateHistory(data.history);
+                
+                if (data.status === 'game_over') {
+                    gameActive = false;
+                    const winner = data.winner === 'user' ? 'あなた' : 'AI';
+                    showMessage(`ゲーム終了！${winner}の勝ちです。${data.message}`, 'game-over');
+                    document.getElementById('gameStatus').textContent = `ゲーム終了 - ${winner}の勝ち`;
+                    document.getElementById('nextChar').textContent = '';
+                } else if (data.status === 'continue') {
+                    showMessage(data.message, 'success');
+                    document.getElementById('gameStatus').textContent = `次は「${data.next_char}」で始まる単語を入力してください`;
+                    document.getElementById('nextChar').textContent = `次: 「${data.next_char}」`;
+                    
+                    // UI再有効化
+                    wordInput.disabled = false;
+                    document.getElementById('submitBtn').disabled = false;
+                } else {
+                    showMessage(data.message, 'error');
+                }
+                
+                wordInput.value = '';
+                
+            } catch (error) {
+                showMessage('エラーが発生しました: ' + error.message, 'error');
+                wordInput.disabled = false;
+                document.getElementById('submitBtn').disabled = false;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                if (gameActive) {
+                    wordInput.focus();
+                }
+            }
+        }
+
+        function updateHistory(history) {
+            if (!history || history.length === 0) return;
+            
+            const historyList = document.getElementById('historyList');
+            const historyContainer = document.getElementById('history');
+            
+            historyList.innerHTML = '';
+            
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `history-item ${item.type === 'user' ? 'user-word' : 'ai-word'}`;
+                
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'word';
+                wordSpan.textContent = `${item.type === 'user' ? 'あなた' : 'AI'}: ${item.word}`;
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'timestamp';
+                timeSpan.textContent = new Date(item.timestamp).toLocaleTimeString();
+                
+                div.appendChild(wordSpan);
+                div.appendChild(timeSpan);
+                historyList.appendChild(div);
+            });
+            
+            historyContainer.style.display = 'block';
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            
+            // 3秒後にメッセージを消す
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
